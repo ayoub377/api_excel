@@ -35,8 +35,6 @@ def process_chunk(chunk_path, query):
     return tapas_results
 
 
-
-
 class DocumentAnalysisView(APIView):
     logger = get_logger()
     permission_classes = [IsAuthenticated]
@@ -92,6 +90,7 @@ class DocumentAnalysisView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def get(self, request, format=None):
+        user = request.user
         try:
             # Read the stored CSV data from the database
             doc_id = request.query_params.get('doc_id')
@@ -107,32 +106,56 @@ class DocumentAnalysisView(APIView):
 
             try:
                 results = []
-                # split the csv file into chunks of 50 rows
+                # split the csv file into chunks of 30 rows
                 num_chunks = divide_csv(temp_file_name_csv, "chunks")
-                # predict the tapas results for each chunk parallelly and then combine the results
-                query = request.query_params.get('tapas_queries', '')
-                with ThreadPoolExecutor() as executor:
-                    # Submit tasks to process each chunk in parallel
-                    futures = [executor.submit(process_chunk, os.path.join("chunks", chunk), query) for chunk in
-                               os.listdir("chunks")]
 
-                    # Wait for all threads to complete
-                    for future in futures:
-                        tapas_results = future.result()
-                        results.extend(tapas_results)
+                print(num_chunks)
 
-                # remove the temp file
-                removeChunks()
-                # remove the temp file
-                os.remove(temp_file_name_csv)
-                # Combine the results
-                queries = results[0]['query']
-                predicted_answers = [result['predicted_answer'] for result in results]
-                # Serialize the results for the response
-                response_data = {
-                    'queries': queries,
-                    'predicted_answers': predicted_answers
-                }
+                if num_chunks == 1:
+                    # If the CSV file has less than 20 rows, process it directly
+                    tapas_results = process_chunk(temp_file_name_csv, request.query_params.get('tapas_queries', ''))
+                    results.append(tapas_results)
+                    response_data = {
+                        'queries': tapas_results[0]['query'],
+                        'predicted_answers': tapas_results[0]['predicted_answer']
+                    }
+                    return Response(response_data, status=status.HTTP_200_OK)
+
+                if user.is_plus_member:
+                    # predict the tapas results for each chunk parallelly and then combine the results
+                    query = request.query_params.get('tapas_queries', '')
+                    with ThreadPoolExecutor() as executor:
+                        # Submit tasks to process each chunk in parallel
+                        futures = [executor.submit(process_chunk, os.path.join("chunks", chunk), query) for chunk in
+                                   os.listdir("chunks")]
+
+                        # Wait for all threads to complete
+                        for future in futures:
+                            tapas_results = future.result()
+                            results.extend(tapas_results)
+
+                    # remove the temp file
+                    removeChunks()
+                    # remove the temp file
+                    os.remove(temp_file_name_csv)
+                    # Combine the results
+                    queries = results[0]['query']
+                    predicted_answers = [result['predicted_answer'] for result in results]
+                    # Serialize the results for the response
+                    response_data = {
+                        'queries': queries,
+                        'predicted_answers': predicted_answers
+                    }
+
+                else:
+                    # remove the temp file
+                    removeChunks()
+                    # remove the temp file
+                    os.remove(temp_file_name_csv)
+                    # Serialize the results for the response
+                    response_data = {
+                        'error': 'Upgrade to a plus account to process more than 20 rows'
+                    }
 
             except Exception as e:
                 self.logger.error("DocumentAnalysisView get method failed")
