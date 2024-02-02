@@ -1,5 +1,3 @@
-import datetime
-from datetime import timedelta
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -9,9 +7,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
+
 SECRET_KEY = 'django-insecure-@umb9n62t36w%*gj1hu+)(xdqih8c%xd6+(5rhe80s9no1e56-'
 
-# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
 ALLOWED_HOSTS = []
@@ -29,7 +27,8 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'users',
     'document_analysis',
-    'oauth2_provider'
+    'oauth2_provider',
+    'drf_api_logger'
 
 ]
 
@@ -39,10 +38,6 @@ REST_FRAMEWORK = {
     ),
 }
 
-SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': datetime.timedelta(days=15),
-    'REFRESH_TOKEN_LIFETIME': datetime.timedelta(days=15),
-}
 AUTH_USER_MODEL = 'users.CustomUser'
 
 MIDDLEWARE = [
@@ -53,7 +48,10 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'drf_api_logger.middleware.api_logger_middleware.APILoggerMiddleware',
 ]
+
+DRF_API_LOGGER_DATABASE = True
 
 ROOT_URLCONF = 'excel_project.urls'
 
@@ -106,6 +104,43 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'django': {
+            'format': '%(asctime)s GMT | %(levelname)s --- \n   %(message)s \n',
+            'datefmt': "%a %d %b %y - %H:%M:%S",
+        }
+    },
+    'handlers': {
+        'django_server': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': 'Logs/django_server.log',
+            'formatter': 'django',
+        },
+        'django_request': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': 'Logs/django_request.log',
+            'formatter': 'django',
+        },
+    },
+    'loggers': {
+        'django.server': {
+            'handlers': ['django_server'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'django.request': {
+            'handlers': ['django_request'],
+            'level': 'INFO',
+            'propagate': True,
+        }
+    }
+}
 
 LANGUAGE_CODE = 'en-us'
 

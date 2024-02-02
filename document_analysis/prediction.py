@@ -1,5 +1,4 @@
 from transformers import TapasTokenizer, TapasForQuestionAnswering
-import pandas as pd
 
 
 class TapasInference:
@@ -15,7 +14,6 @@ class TapasInference:
         predicted_answer_coordinates, predicted_aggregation_indices = self.tokenizer.convert_logits_to_predictions(
             inputs, outputs.logits.detach(), outputs.logits_aggregation.detach()
         )
-        print("Predicted answer coordinates: ", predicted_answer_coordinates)
         id2aggregation = {0: "NONE", 1: "SUM", 2: "AVERAGE", 3: "COUNT"}
         aggregation_predictions_string = [id2aggregation[x] for x in predicted_aggregation_indices]
 
