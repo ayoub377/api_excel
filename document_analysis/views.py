@@ -14,6 +14,7 @@ from .serializers import DocumentSerializer
 from .prediction import TapasInference  # Import your TapasInference class
 import uuid
 
+from .throttles import RoleBasedThrottle
 from .utils import divide_csv, removeChunks
 
 
@@ -38,6 +39,7 @@ def process_chunk(chunk_path, query):
 class DocumentAnalysisView(APIView):
     logger = get_logger()
     permission_classes = [IsAuthenticated]
+    throttle_classes = [RoleBasedThrottle]
 
     def post(self, request, format=None):
         self.logger.info("DocumentAnalysisView post method called")
@@ -64,7 +66,7 @@ class DocumentAnalysisView(APIView):
             # Create an instance of the model with processed data
             doc = ExcelDocumentModel.objects.create(
                 user=request.user,  # Assuming you have a user associated with the request
-                document_name=request.data.get('document_name', 'Untitled Document'),
+                document_name=request.data.get('document_name'),
                 document=request.data['file'],
                 processed_data=csv_data,  # Assign CSV data to processed_data field
             )
@@ -89,7 +91,7 @@ class DocumentAnalysisView(APIView):
             self.logger.error("DocumentAnalysisView post method failed")
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def get(self, request, format=None):
+    def get(self, request):
         user = request.user
         try:
             # Read the stored CSV data from the database
@@ -113,7 +115,7 @@ class DocumentAnalysisView(APIView):
 
                 if num_chunks == 1:
                     # If the CSV file has less than 20 rows, process it directly
-                    tapas_results = process_chunk(temp_file_name_csv, request.query_params.get('tapas_queries', ''))
+                    tapas_results = process_chunk(temp_file_name_csv, request.query_params.get('tapas_queries'))
                     results.append(tapas_results)
                     response_data = {
                         'queries': tapas_results[0]['query'],
@@ -123,7 +125,7 @@ class DocumentAnalysisView(APIView):
 
                 if user.is_plus_member:
                     # predict the tapas results for each chunk parallelly and then combine the results
-                    query = request.query_params.get('tapas_queries', '')
+                    query = request.query_params.get('tapas_queries')
                     with ThreadPoolExecutor() as executor:
                         # Submit tasks to process each chunk in parallel
                         futures = [executor.submit(process_chunk, os.path.join("chunks", chunk), query) for chunk in

@@ -17,7 +17,7 @@ def divide_csv(input_file, output_directory):
     total_rows = len(df)
 
     # Define the maximum number of rows per file
-    max_rows_per_file = 41
+    max_rows_per_file = 30
 
     # Calculate the number of chunks needed
     num_chunks = (total_rows // max_rows_per_file) + (1 if total_rows % max_rows_per_file != 0 else 0)

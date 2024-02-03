@@ -1,6 +1,4 @@
-from oauth2_provider.oauth2_validators import RefreshToken
 from rest_framework import viewsets, permissions, status
-
 from rest_framework import generics
 from rest_framework.response import Response
 from django.contrib.auth.models import Group

@@ -36,6 +36,11 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+
+    'DEFAULT_THROTTLE_CLASSES': [
+        'document_analysis.throttles.RoleBasedThrottle',
+    ],
+
 }
 
 AUTH_USER_MODEL = 'users.CustomUser'
