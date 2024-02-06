@@ -5,7 +5,6 @@ from concurrent.futures import ThreadPoolExecutor
 import chardet
 import pandas as pd
 
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.views import APIView
@@ -14,7 +13,6 @@ from .serializers import DocumentSerializer
 from .prediction import TapasInference  # Import your TapasInference class
 import uuid
 
-from .throttles import RoleBasedThrottle
 from .utils import divide_csv, removeChunks
 
 
@@ -38,8 +36,6 @@ def process_chunk(chunk_path, query):
 
 class DocumentAnalysisView(APIView):
     logger = get_logger()
-    permission_classes = [IsAuthenticated]
-    throttle_classes = [RoleBasedThrottle]
 
     def post(self, request, format=None):
         self.logger.info("DocumentAnalysisView post method called")
@@ -65,7 +61,6 @@ class DocumentAnalysisView(APIView):
 
             # Create an instance of the model with processed data
             doc = ExcelDocumentModel.objects.create(
-                user=request.user,  # Assuming you have a user associated with the request
                 document_name=request.data.get('document_name'),
                 document=request.data['file'],
                 processed_data=csv_data,  # Assign CSV data to processed_data field
@@ -92,7 +87,6 @@ class DocumentAnalysisView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def get(self, request):
-        user = request.user
         try:
             # Read the stored CSV data from the database
             doc_id = request.query_params.get('doc_id')
@@ -111,8 +105,6 @@ class DocumentAnalysisView(APIView):
                 # split the csv file into chunks of 30 rows
                 num_chunks = divide_csv(temp_file_name_csv, "chunks")
 
-                print(num_chunks)
-
                 if num_chunks == 1:
                     # If the CSV file has less than 20 rows, process it directly
                     tapas_results = process_chunk(temp_file_name_csv, request.query_params.get('tapas_queries'))
@@ -123,41 +115,30 @@ class DocumentAnalysisView(APIView):
                     }
                     return Response(response_data, status=status.HTTP_200_OK)
 
-                if user.is_plus_member:
-                    # predict the tapas results for each chunk parallelly and then combine the results
-                    query = request.query_params.get('tapas_queries')
-                    with ThreadPoolExecutor() as executor:
-                        # Submit tasks to process each chunk in parallel
-                        futures = [executor.submit(process_chunk, os.path.join("chunks", chunk), query) for chunk in
-                                   os.listdir("chunks")]
+                # predict the tapas results for each chunk parallelly and then combine the results
+                query = request.query_params.get('tapas_queries')
+                with ThreadPoolExecutor() as executor:
+                    # Submit tasks to process each chunk in parallel
+                    futures = [executor.submit(process_chunk, os.path.join("chunks", chunk), query) for chunk in
+                               os.listdir("chunks")]
 
-                        # Wait for all threads to complete
-                        for future in futures:
-                            tapas_results = future.result()
-                            results.extend(tapas_results)
+                    # Wait for all threads to complete
+                    for future in futures:
+                        tapas_results = future.result()
+                        results.extend(tapas_results)
 
-                    # remove the temp file
-                    removeChunks()
-                    # remove the temp file
-                    os.remove(temp_file_name_csv)
-                    # Combine the results
-                    queries = results[0]['query']
-                    predicted_answers = [result['predicted_answer'] for result in results]
-                    # Serialize the results for the response
-                    response_data = {
-                        'queries': queries,
-                        'predicted_answers': predicted_answers
-                    }
-
-                else:
-                    # remove the temp file
-                    removeChunks()
-                    # remove the temp file
-                    os.remove(temp_file_name_csv)
-                    # Serialize the results for the response
-                    response_data = {
-                        'error': 'Upgrade to a plus account to process more than 20 rows'
-                    }
+                # remove the temp file
+                removeChunks()
+                # remove the temp file
+                os.remove(temp_file_name_csv)
+                # Combine the results
+                queries = results[0]['query']
+                predicted_answers = [result['predicted_answer'] for result in results]
+                # Serialize the results for the response
+                response_data = {
+                    'queries': queries,
+                    'predicted_answers': predicted_answers
+                }
 
             except Exception as e:
                 self.logger.error("DocumentAnalysisView get method failed")
