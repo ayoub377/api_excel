@@ -1,5 +1,5 @@
 # API for Excel Data Extraction using Natural Language
-This project provides a RESTful API allowing users to upload Excel files and extract specific information from them using natural language queries. The backend is built using Django and Django REST Framework, and it uses [(https://huggingface.co/docs/transformers/en/model_doc/tapas)] to interpret natural language and retrieve relevant data from the Excel files.
+This project provides a RESTful API allowing users to upload Excel files and extract specific information from them using natural language queries. The backend is built using [Django](https://www.djangoproject.com/) and [Django REST Framework](https://www.django-rest-framework.org/), and it uses [Tapas](https://huggingface.co/docs/transformers/en/model_doc/tapas) to interpret natural language and retrieve relevant data from the Excel files.
 
 ## Features
   - Upload Excel files for analysis.
@@ -33,7 +33,6 @@ pip install -r requirements.txt
 python manage.py migrate
 ```
 ## 6. Run the server
-
 ```bash
 python manage.py runserver
 ```
@@ -42,49 +41,49 @@ The API will be accessible at http://localhost:8000.
 ## API Endpoints
 
 1. Upload an Excel File
-  ```http
-POST /api/excel/upload
-```
-Request: The file should be sent as a form-data file.
-Response:
-```json
-{
-  "id": "file_id",
-  "message": "File uploaded successfully."
-}
-```
+  ```
+  POST /api/excel/upload
+  ```
+  Request: The file should be sent as a form-data file.
+  Response:
+  ```
+    {
+      "id": "file_id",
+      "message": "File uploaded successfully."
+    }
+   ```
 2. Query Excel File with Natural Language
-   ```http
-   POST /api/excel/{file_id}/query
    ```
-   Resquest:
-   ```json
-   {
-      "query": "What is the total sales in 2023?"
-  }
+   POST /api/excel/{file_id}/?tapas_queries=What is the total sales in 2023?
    ```
-Response:
-```json
-      {
-        "answer": "The total sales in 2023 is $500,000."
-      }
-```
+    Resquest:
+    ```
+         {
+            "tapas_queries": "What is the total sales in 2023?"
+         }
+    ```
+    Response:
+    ```
+          {
+            "answer": "The total sales in 2023 is $500,000."
+          }
+    ```
 3. Get Uploaded Excel Files
-    ```json
+    ```
     GET /api/excel/files
     ```
 Description: Retrieve a list of all uploaded Excel files.
 
-Response:
-```json
-[
-  {
-    "id": "file_id",
-    "filename": "sales_data.xlsx",
-    "upload_date": "2024-09-12"
-  }
-]
-```
+    Response:
+    ```
+    [
+      {
+        "id": "file_id",
+        "filename": "sales_data.xlsx",
+        "upload_date": "2024-09-12"
+      }
+    ]
+    ```
 
 ## Technologies Used
    - Django: Python web framework.
@@ -98,6 +97,3 @@ Response:
    - Upload: Users upload Excel files via the /upload endpoint.
    - Natural Language Queries: Users ask questions in natural language, like "What is the total revenue in 2023?" The API processes this query and retrieves relevant data from the uploaded Excel file.
    - Response: The system uses Tapas to interpret the query and return the answer in JSON format.
-
-
-
